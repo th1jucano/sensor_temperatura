@@ -6,7 +6,7 @@
 #define sensor A0
 #define ledR 11
 #define ledG 10
-#define ledB 9
+#define ledB 9 // agora adicionei isso 
 #define pot A1
 
 float temperatura = 0;
