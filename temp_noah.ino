@@ -1,6 +1,8 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
+// este é um teste de atualização do git
+
 #define sensor A0
 #define ledR 11
 #define ledG 10
