@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "name": "Arduino Uno",
+      "includePath": [
+        "${workspaceFolder}/**",
+        "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino",
+        "C:/Program Files (x86)/Arduino/hardware/arduino/avr/variants/standard",
+        "C:/Program Files (x86)/Arduino/libraries/**"
+      ],
+      "defines": [
+        "ARDUINO=10813",
+        "F_CPU=16000000L",
+        "ARDUINO_ARCH_AVR",
+        "ARDUINO_AVR_UNO"
+      ],
+      "compilerPath": "C:/Program Files (x86)/Arduino/hardware/tools/avr/bin/avr-g++.exe",
+      "cStandard": "c11",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "windows-gcc-x64"
+    }
+  ],
+  "version": 4
+}

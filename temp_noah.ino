@@ -1,12 +1,10 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-// este é um teste de atualização do git
-
 #define sensor A0
 #define ledR 11
 #define ledG 10
-#define ledB 9 // agora adicionei isso 
+#define ledB 9 
 #define pot A1
 
 float temperatura = 0;
@@ -21,7 +19,6 @@ const unsigned long intervalo = 5000; // 5 segundos
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE); // inicia lcd
 
 void setup() {
-
   pinMode(sensor, INPUT);
   pinMode(ledR, OUTPUT);
   pinMode(ledG, OUTPUT);
@@ -32,25 +29,26 @@ void setup() {
 }
 
 int lerPot() {
-
   int valorPot = analogRead(pot);
   valorPot = map(valorPot, 0, 1023, 0, 255); // mapeamento analógico para digital
   return valorPot;
-
 }
 
-int lertemperatura() {
 
-  int leitura = analogRead(sensor);
-  float tensao = leitura * (5.0 / 1024.0); // ajusta a voltagem à condição de temperatura, evita variações bruscas comuns a este tipo de sensor
-  temperatura = tensao * 100 + offsetreal; // um grau celsiu = 10mV = 0.01v
+int lertemperatura() {
+  analogRead(sensor);            // Primeira leitura descartada 
+  delayMicroseconds(10);         // Dá tempo pro ADC estabilizar. aqui foi necessário inserir esse delay pois ele estava com leitura errada passando para o display temperaturas absurdas. 
+  // a lógica é basicamente a seguinte: vc gira o potenciômetro, ele aumenta o valor analógico mas, sem esse delay, ele não consegue entender que é só um aumento de leitura do potenciômetro, e repassa esse valor para o lcd e o led.
+  // esse delay é suficiente para estabilizar as leituras e passar os valores corretos para led e lcd
+  int leitura = analogRead(sensor);  // Leitura real do sensor
+
+  float tensao = leitura * (5.0 / 1024.0); // ajusta a voltagem à condição de temperatura
+  temperatura = tensao * 100 + offsetreal; // um grau Celsius = 10mV = 0.01v
   temparredondada = round(temperatura);
   return temparredondada;
-
 }
 
 void mostratemperatura() {
-
   lcd.setCursor(0, 0);
   lcd.print("****  ");
   lcd.print(temparredondada);
@@ -78,33 +76,27 @@ void red(int intensidade) {
   analogWrite(ledR, intensidade);
   analogWrite(ledG, 0);
   analogWrite(ledB, 0);
-
 }
 
 void green(int intensidade) {
   analogWrite(ledR, 0);
   analogWrite(ledG, intensidade);
   analogWrite(ledB, 0);
-
 }
 
 void blue(int intensidade) {
   analogWrite(ledR, 0);
   analogWrite(ledG, 0);
   analogWrite(ledB, intensidade);
-
 }
 
 void apagarLEDs() {
-
   analogWrite(ledR, 0);
   analogWrite(ledG, 0);
   analogWrite(ledB, 0);
-
 }
 
 void loop() {
-  
   unsigned long tempoAtual = millis();
   int intensidade = lerPot();
 
