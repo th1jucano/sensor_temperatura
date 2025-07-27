@@ -21,7 +21,7 @@ int temparredondada = 0;
 
 // Timer para atualização periódica
 unsigned long tempoAnterior = 0;
-const unsigned long intervalo = 5000; // 5 segundos
+const unsigned long intervalo = 1000; // 5 segundos
 
 // Inicializa o LCD
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
@@ -77,7 +77,7 @@ void loop() {
   unsigned long tempoAtual = millis();
   int intensidade = lerPot();
 
-  // Atualiza temperatura e LCD a cada 5 segundos
+  // Atualiza temperatura e LCD a cada 1 segundo
   if (tempoAtual - tempoAnterior >= intervalo) {
     tempoAnterior = tempoAtual;
 
@@ -89,17 +89,16 @@ void loop() {
       bufferCheio = true;
     }
     
-    
-
     if (bufferCheio){
       int soma = 0;
       for (int i = 0; i < numLeituras; i++){
         soma += leituras[i];
-      }
-    
+    }
+
       temparredondada = round((float)soma / numLeituras);
       mostratemperatura();
-    }
+      bufferCheio = false;  // Zera o buffer
+  }
 
     if (temparredondada <= 21) {
       led.blue(intensidade);
