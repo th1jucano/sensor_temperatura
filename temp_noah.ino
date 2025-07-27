@@ -1,49 +1,50 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+#include "LED_RGB.h"
 
+const int numLeituras = 5;
+int leituras[numLeituras];
+int indiceLeitura = 0;
+bool bufferCheio = false;
+
+// Cria objeto LED RGB com os pinos R, G, B
+LED_RGB led(11, 10, 9);
+
+// Define os pinos do sensor e potenciômetro
 #define sensor A0
-#define ledR 11
-#define ledG 10
-#define ledB 9 
 #define pot A1
 
+// Variáveis para temperatura
 float temperatura = 0;
 float offsetreal = -2;
 int temparredondada = 0;
 
-bool estadoLed = true;
-
+// Timer para atualização periódica
 unsigned long tempoAnterior = 0;
 const unsigned long intervalo = 5000; // 5 segundos
 
-LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE); // inicia lcd
+// Inicializa o LCD
+LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 
 void setup() {
   pinMode(sensor, INPUT);
-  pinMode(ledR, OUTPUT);
-  pinMode(ledG, OUTPUT);
-  pinMode(ledB, OUTPUT);
-
   lcd.begin(16, 2);
   lcd.setBacklight(1);
 }
 
 int lerPot() {
   int valorPot = analogRead(pot);
-  valorPot = map(valorPot, 0, 1023, 0, 255); // mapeamento analógico para digital
+  valorPot = map(valorPot, 0, 1023, 0, 255); // Mapeia para faixa de PWM
   return valorPot;
 }
 
-
 int lertemperatura() {
-  analogRead(sensor);            // Primeira leitura descartada 
-  delayMicroseconds(10);         // Dá tempo pro ADC estabilizar. aqui foi necessário inserir esse delay pois ele estava com leitura errada passando para o display temperaturas absurdas. 
-  // a lógica é basicamente a seguinte: vc gira o potenciômetro, ele aumenta o valor analógico mas, sem esse delay, ele não consegue entender que é só um aumento de leitura do potenciômetro, e repassa esse valor para o lcd e o led.
-  // esse delay é suficiente para estabilizar as leituras e passar os valores corretos para led e lcd
+  analogRead(sensor);            // Primeira leitura descartada
+  delayMicroseconds(10);         // Estabiliza o ADC
   int leitura = analogRead(sensor);  // Leitura real do sensor
 
-  float tensao = leitura * (5.0 / 1024.0); // ajusta a voltagem à condição de temperatura
-  temperatura = tensao * 100 + offsetreal; // um grau Celsius = 10mV = 0.01v
+  float tensao = leitura * (5.0 / 1024.0);  // Converte leitura para tensão
+  temperatura = tensao * 100 + offsetreal; // Converte tensão para °C
   temparredondada = round(temperatura);
   return temparredondada;
 }
@@ -72,30 +73,6 @@ void mostratemperatura() {
   lcd.print(mensagem);
 }
 
-void red(int intensidade) {
-  analogWrite(ledR, intensidade);
-  analogWrite(ledG, 0);
-  analogWrite(ledB, 0);
-}
-
-void green(int intensidade) {
-  analogWrite(ledR, 0);
-  analogWrite(ledG, intensidade);
-  analogWrite(ledB, 0);
-}
-
-void blue(int intensidade) {
-  analogWrite(ledR, 0);
-  analogWrite(ledG, 0);
-  analogWrite(ledB, intensidade);
-}
-
-void apagarLEDs() {
-  analogWrite(ledR, 0);
-  analogWrite(ledG, 0);
-  analogWrite(ledB, 0);
-}
-
 void loop() {
   unsigned long tempoAtual = millis();
   int intensidade = lerPot();
@@ -104,32 +81,41 @@ void loop() {
   if (tempoAtual - tempoAnterior >= intervalo) {
     tempoAnterior = tempoAtual;
 
-    int t = lertemperatura();
-    mostratemperatura();
+    leituras[indiceLeitura] = lertemperatura();
+    indiceLeitura++;
+    //mostratemperatura();
+    if (indiceLeitura >= numLeituras){
+      indiceLeitura = 0;
+      bufferCheio = true;
+    }
+    
+    
 
-    if (estadoLed) {
-      if (t <= 21) {
-        blue(intensidade);
-      } else if (t <= 30) {
-        green(intensidade);
-      } else {
-        red(intensidade);
+    if (bufferCheio){
+      int soma = 0;
+      for (int i = 0; i < numLeituras; i++){
+        soma += leituras[i];
       }
+    
+      temparredondada = round((float)soma / numLeituras);
+      mostratemperatura();
+    }
+
+    if (temparredondada <= 21) {
+      led.blue(intensidade);
+    } else if (temparredondada <= 30) {
+      led.green(intensidade);
     } else {
-      apagarLEDs();
+      led.red(intensidade);
     }
   }
 
-  // Mesmo fora do intervalo de 5s, permite ajuste de intensidade em tempo real
-  if (estadoLed) {
-    if (temparredondada <= 21) {
-      blue(intensidade);
-    } else if (temparredondada <= 30) {
-      green(intensidade);
-    } else {
-      red(intensidade);
-    }
+  // Permite ajuste de intensidade em tempo real
+  if (temparredondada <= 21) {
+    led.blue(intensidade);
+  } else if (temparredondada <= 30) {
+    led.green(intensidade);
   } else {
-    apagarLEDs();
+    led.red(intensidade);
   }
 }
