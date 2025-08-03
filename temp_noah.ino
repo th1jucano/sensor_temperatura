@@ -1,64 +1,103 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
-#include "LED_RGB.h"
 
-const int numLeituras = 5;
-int leituras[numLeituras];
-int indiceLeitura = 0;
-bool bufferCheio = false;
-
-// Cria objeto LED RGB com os pinos R, G, B
-LED_RGB led(11, 10, 9);
-
-// Define os pinos do sensor e potenciômetro
 #define sensor A0
+#define ledR 11
+#define ledG 10
+#define ledB 9
 #define pot A1
 
-// Variáveis para temperatura
 float temperatura = 0;
 float offsetreal = -2;
 int temparredondada = 0;
 
-// Timer para atualização periódica
-unsigned long tempoAnterior = 0;
-const unsigned long intervalo = 1000; // 5 segundos
+bool estadoLed = true;
 
-// Inicializa o LCD
-LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
+unsigned long tempoAnterior = 0;
+const unsigned long intervalo = 5000; // 5 segundos
+
+//LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE); // inicia lcd
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 void setup() {
+
+  byte exclamacao[] = {
+  B10001,
+  B11011,
+  B01110,
+  B00100,
+  B11011,
+  B00000,
+  B01110,
+  B10001
+  };
+
+  byte zeros[] = {
+  B01110,
+  B01110,
+  B00000,
+  B01110,
+  B01110,
+  B00000,
+  B01110,
+  B01110
+};
+
   pinMode(sensor, INPUT);
-  lcd.begin(16, 2);
+  pinMode(ledR, OUTPUT);
+  pinMode(ledG, OUTPUT);
+  pinMode(ledB, OUTPUT);
+
+  lcd.init();
   lcd.setBacklight(1);
+  lcd.createChar(1,exclamacao);
+  lcd.createChar(2,zeros);
+
 }
 
 int lerPot() {
+
   int valorPot = analogRead(pot);
-  valorPot = map(valorPot, 0, 1023, 0, 255); // Mapeia para faixa de PWM
+  valorPot = map(valorPot, 0, 1023, 0, 255); // mapeamento analógico para digital
   return valorPot;
+
 }
 
-int lertemperatura() {
-  analogRead(sensor);            // Primeira leitura descartada
-  delayMicroseconds(10);         // Estabiliza o ADC
-  int leitura = analogRead(sensor);  // Leitura real do sensor
 
-  float tensao = leitura * (5.0 / 1024.0);  // Converte leitura para tensão
-  temperatura = tensao * 100 + offsetreal; // Converte tensão para °C
+
+int lertemperatura() {
+
+  int leitura = analogRead(sensor);
+  float tensao = leitura * (5.0 / 1024.0); // ajusta a voltagem à condição de temperatura, evita variações bruscas comuns a este tipo de sensor
+  temperatura = tensao * 100 + offsetreal; // um grau celsiu = 10mV = 0.01v
   temparredondada = round(temperatura);
   return temparredondada;
+
 }
 
 void mostratemperatura() {
+
   lcd.setCursor(0, 0);
-  lcd.print("****  ");
+  //lcd.print("****  ");
+  lcd.write(1);
+  lcd.write(2);
+  lcd.write(1);
+  lcd.write(2);
+  //lcd.write(1);
+  lcd.print("  ");
   lcd.print(temparredondada);
   lcd.print((char)223);
-  lcd.print("C  ****");
+  lcd.print("C  ");
+  lcd.write(2);
+  lcd.write(1);
+  lcd.write(2);
+  lcd.write(1);
+  lcd.write(2);
 
   String mensagem;
 
-  if (temparredondada <= 21) {
+  if (temparredondada <= 20) {
     mensagem = "Hipotermia";
   } else if (temparredondada <= 30) {
     mensagem = "Suave na nave";
@@ -73,48 +112,70 @@ void mostratemperatura() {
   lcd.print(mensagem);
 }
 
+void red(int intensidade) {
+  analogWrite(ledR, intensidade);
+  analogWrite(ledG, 0);
+  analogWrite(ledB, 0);
+
+}
+
+void green(int intensidade) {
+  analogWrite(ledR, 0);
+  analogWrite(ledG, intensidade);
+  analogWrite(ledB, 0);
+
+}
+
+void blue(int intensidade) {
+  analogWrite(ledR, 0);
+  analogWrite(ledG, 0);
+  analogWrite(ledB, intensidade);
+
+}
+
+void apagarLEDs() {
+
+  analogWrite(ledR, 0);
+  analogWrite(ledG, 0);
+  analogWrite(ledB, 0);
+
+}
+
 void loop() {
+  
   unsigned long tempoAtual = millis();
   int intensidade = lerPot();
 
-  // Atualiza temperatura e LCD a cada 1 segundo
+  // Atualiza temperatura e LCD a cada 5 segundos
   if (tempoAtual - tempoAnterior >= intervalo) {
     tempoAnterior = tempoAtual;
 
-    leituras[indiceLeitura] = lertemperatura();
-    indiceLeitura++;
-    //mostratemperatura();
-    if (indiceLeitura >= numLeituras){
-      indiceLeitura = 0;
-      bufferCheio = true;
-    }
-    
-    if (bufferCheio){
-      int soma = 0;
-      for (int i = 0; i < numLeituras; i++){
-        soma += leituras[i];
-    }
+    int t = lertemperatura();
+    mostratemperatura();
 
-      temparredondada = round((float)soma / numLeituras);
-      mostratemperatura();
-      bufferCheio = false;  // Zera o buffer
-  }
-
-    if (temparredondada <= 21) {
-      led.blue(intensidade);
-    } else if (temparredondada <= 30) {
-      led.green(intensidade);
+    if (estadoLed) {
+      if (t <= 21) {
+        blue(intensidade);
+      } else if (t <= 30) {
+        green(intensidade);
+      } else {
+        red(intensidade);
+      }
     } else {
-      led.red(intensidade);
+      apagarLEDs();
     }
   }
 
-  // Permite ajuste de intensidade em tempo real
-  if (temparredondada <= 21) {
-    led.blue(intensidade);
-  } else if (temparredondada <= 30) {
-    led.green(intensidade);
+  // Mesmo fora do intervalo de 5s, permite ajuste de intensidade em tempo real
+  if (estadoLed) {
+    if (temparredondada <= 20) {
+      blue(intensidade);
+    } else if (temparredondada <= 30) {
+      green(intensidade);
+    } else {
+      red(intensidade);
+    }
   } else {
-    led.red(intensidade);
+    apagarLEDs();
   }
 }
